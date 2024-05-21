@@ -1,13 +1,12 @@
 require('dotenv').config(); //initialize dotenv
-const axios = require('axios');
 const path = require('path');
-const fs = require("fs"); // app.getPath
+const fs = require("fs"); 
 const fsp = require('fs').promises;
-const express = require('express');
-const cors = require('cors');
-const appE = express();
-const server = require('http').Server(appE);
-const cron = require("node-cron");
+//const express = require('express');
+//const cors = require('cors');
+//const appE = express();
+//const server = require('http').Server(appE);
+//const cron = require("node-cron");
 const WebSocketClient = require("websocket").client;
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
@@ -26,7 +25,7 @@ const COOKIE = process.env.COOKIE == undefined ? 'noble_dev_session=' : process.
 const EMPLOYER_ID = process.env.EMPLOYER_ID == undefined ? '1' : process.env.EMPLOYER_ID;
 const EMPLOYER_RFC = process.env.EMPLOYER_RFC == undefined ? 'HPR190228647' : process.env.EMPLOYER_RFC;
 const WEBSOCKETS_URL = process.env.WEBSOCKETS_URL == undefined ? 'wss://ws.productivityplus.tech/' : process.env.WEBSOCKETS_URL;
-const KIOSKO_ID = process.env.KIOSKO_ID == undefined ? '1' : process.env.KIOSKO_ID;
+const SMS_ID = process.env.KIOSKO_ID == undefined ? '6000' : process.env.KIOSKO_ID;
 let REMOTE_ID = process.env.REMOTE_ID == undefined ? '5001' : process.env.REMOTE_ID;
 
 // Variables de Funcionamiento
@@ -39,7 +38,7 @@ let timeoutId;
 
 const register = {
   type: 'register',
-  clientId: KIOSKO_ID
+  clientId: SMS_ID
 };
 
 let messageResponse = {
@@ -58,7 +57,6 @@ socketclient.on('connect', function (conn) {
   clearTimeout(timeoutId);
   connection = conn;                            // Asignar la conexión a la variable global
   connection.sendUTF(JSON.stringify(register));
-  connection.sendUTF(JSON.stringify(active));
 
   connection.on('error', function (error) {
     console.log("Connection error: " + error.toString());
@@ -85,23 +83,31 @@ socketclient.on('connect', function (conn) {
     console.log('Data: ' + data);
 
     switch (prefix) {
+      case "sendsms":
       case "sendSMS":
-        port.write(data + '\n', err => {
+        const properties = JSON.parse(data);
+        port.write("SMS" + properties.number + properties.msg + '\n', err => {
             if (err) {
               return console.log('Error al enviar mensaje:', err.message);
             }
+            /*
             let messageResponse = {
                 type: 'message',
                 recipientId: REMOTE_ID,
                 command: "OK*",
               };
             connection.sendUTF(JSON.stringify(messageResponse));
-            console.log('Mensaje enviado:', message);
+            */
+            console.log('Mensaje enviado:', data);
         }); 
         break;
 
+        case "notification":
+            console.log('Notificación Ignorada');
+        break;
+
       default:
-        //
+        console.log("----------------------------------");
         break;
     }
 
@@ -149,6 +155,7 @@ port.on('open', () => {
     });
   });
 
+  socketclient.connect(WEBSOCKETS_URL);
 
 
 
